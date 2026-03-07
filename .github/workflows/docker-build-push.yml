@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - beta
     tags:
       - 'beta-v*.*.*'
 
@@ -25,42 +26,42 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
-    - name: Determine build version
-      id: determine
+    - name: Read app version
+      id: version_file
       run: |
-        if [[ "${{ github.ref }}" == refs/tags/beta-v* ]]; then
-          VERSION="${{ github.ref_name }}"
-          IS_BETA="true"
-          echo "should_build=true" >> $GITHUB_OUTPUT
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "is_beta=${IS_BETA}" >> $GITHUB_OUTPUT
-          echo "Beta version build: ${VERSION}"
-          exit 0
-        fi
-
-        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        if [ -z "$LATEST_TAG" ]; then
-          echo "No formal tag found, skip build"
-          echo "should_build=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        IMAGE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/ostrm/tags/${LATEST_TAG}")
-        if [ "$IMAGE_EXISTS" = "200" ]; then
-          echo "Image for ${LATEST_TAG} already exists, skip build"
-          echo "should_build=false" >> $GITHUB_OUTPUT
-          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+        if [[ "${{ github.ref }}" == refs/heads/beta ]]; then
+          # Beta branch - use beta_version from app_version.json
+          BETA_VERSION=$(jq -r '.beta_version' app_version.json)
+          echo "Beta branch detected, version: ${BETA_VERSION}"
+          echo "version=${BETA_VERSION}" >> $GITHUB_OUTPUT
+          echo "is_beta=true" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+          # Main branch - use release_version from app_version.json
+          RELEASE_VERSION=$(jq -r '.release_version' app_version.json)
+          echo "Main branch detected, version: ${RELEASE_VERSION}"
+          echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=false" >> $GITHUB_OUTPUT
-          exit 0
+        elif [[ "${{ github.ref }}" == refs/tags/beta-v* ]]; then
+          # Beta tag push
+          VERSION="${{ github.ref_name }}"
+          echo "Beta tag detected: ${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_beta=true" >> $GITHUB_OUTPUT
         fi
 
-        echo "New release version found: ${LATEST_TAG}"
-        echo "should_build=true" >> $GITHUB_OUTPUT
-        echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-        echo "is_beta=false" >> $GITHUB_OUTPUT
+    - name: Check if image exists
+      id: check_image
+      run: |
+        VERSION="${{ steps.version_file.outputs.version }}"
+        IMAGE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/ostrm/tags/${VERSION}")
+        if [ "$IMAGE_EXISTS" = "200" ]; then
+          echo "Image for ${VERSION} already exists, skip build"
+          echo "should_build=false" >> $GITHUB_OUTPUT
+        else
+          echo "Image for ${VERSION} does not exist, proceed with build"
+          echo "should_build=true" >> $GITHUB_OUTPUT
+        fi
 
   build-amd64:
     runs-on: ubuntu-latest
@@ -71,6 +72,8 @@ jobs:
     if: needs.determine-version.outputs.should_build == 'true'
     outputs:
       digest: ${{ steps.build.outputs.digest }}
+      version: ${{ needs.determine-version.outputs.version }}
+      is_beta: ${{ needs.determine-version.outputs.is_beta }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -130,6 +133,8 @@ jobs:
     if: needs.determine-version.outputs.should_build == 'true'
     outputs:
       digest: ${{ steps.build.outputs.digest }}
+      version: ${{ needs.determine-version.outputs.version }}
+      is_beta: ${{ needs.determine-version.outputs.is_beta }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -201,7 +206,6 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Get version from context
-      id: version
       run: |
         VERSION="${{ needs.build-amd64.outputs.version }}"
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
@@ -209,7 +213,7 @@ jobs:
     - name: Create and push manifest (release)
       if: needs.build-amd64.outputs.is_beta != 'true'
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        VERSION="${{ needs.build-amd64.outputs.version }}"
         docker buildx imagetools create -t docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION} \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64 \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64
@@ -221,20 +225,20 @@ jobs:
     - name: Create and push manifest (beta)
       if: needs.build-amd64.outputs.is_beta == 'true'
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        VERSION="${{ needs.build-amd64.outputs.version }}"
         docker buildx imagetools create -t docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION} \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64 \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64
 
     - name: Verify manifests
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        VERSION="${{ needs.build-amd64.outputs.version }}"
         docker buildx imagetools inspect docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}
 
     - name: Create source code archive
       if: needs.build-amd64.outputs.is_beta != 'true'
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        VERSION="${{ needs.build-amd64.outputs.version }}"
         zip -r "ostrm-${VERSION}-source.zip" . \
           -x "*.git*" \
           -x "node_modules/*" \
@@ -263,7 +267,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        VERSION="${{ needs.build-amd64.outputs.version }}"
         CHANGELOG="${{ steps.github_release.outputs.changelog }}"
         if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "- No changes" ]; then
           CHANGELOG="Release ${VERSION}"
@@ -276,7 +280,7 @@ jobs:
 
     - name: Image digest summary
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        VERSION="${{ needs.build-amd64.outputs.version }}"
         echo "## Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Architecture | Image |" >> $GITHUB_STEP_SUMMARY
