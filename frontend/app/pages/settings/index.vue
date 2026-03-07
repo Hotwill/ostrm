@@ -100,38 +100,51 @@
             <div class="p-4 bg-white/5 rounded-xl border border-white/6">
               <h4 class="text-sm font-medium text-white/80 mb-3">API 域名配置</h4>
               <p class="text-xs text-white/40 mb-4">选择 TMDB API 域名，中国用户可选择中国域名</p>
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label for="tmdbApiDomain" class="block text-xs text-white/50 mb-1">API 域名</label>
-                  <v-select
-                    id="tmdbApiDomain"
-                    v-model="tmdbApiDomain"
-                    :options="tmdbApiDomainOptions"
-                    :reduce="(opt: any) => opt.value"
-                    :clearable="false"
-                    class="vue-select-md"
-                    @update:modelValue="handleApiDomainChange"
-                  />
+              <div class="space-y-4">
+                <!-- API 域名 -->
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label for="tmdbApiDomain" class="block text-xs text-white/50 mb-1">API 域名</label>
+                    <v-select
+                      id="tmdbApiDomain"
+                      v-model="tmdbApiDomain"
+                      :options="tmdbApiDomainOptions"
+                      :reduce="(opt: any) => opt.value"
+                      :clearable="false"
+                      class="vue-select-md"
+                      @update:modelValue="handleApiDomainChange"
+                    />
+                  </div>
+                  <div v-if="tmdbApiDomain === 'custom'">
+                    <label for="tmdbApiUrl" class="block text-xs text-white/50 mb-1">自定义 API 域名</label>
+                    <input id="tmdbApiUrl" v-model="tmdbConfig.baseUrl" type="text" class="input-field" placeholder="https://api.example.com" />
+                  </div>
                 </div>
-                <div v-if="tmdbApiDomain === 'custom'">
-                  <label for="tmdbApiUrl" class="block text-xs text-white/50 mb-1">自定义 API 域名</label>
-                  <input id="tmdbApiUrl" v-model="tmdbConfig.baseUrl" type="text" class="input-field" placeholder="https://api.example.com" />
+                <div class="text-xs text-blue-400/80 bg-blue-500/10 p-2 rounded">
+                  当前 API URL：<code class="text-blue-300">{{ tmdbConfig.baseUrl }}/3</code>
                 </div>
-                <div>
-                  <label for="tmdbImageDomain" class="block text-xs text-white/50 mb-1">图片域名</label>
-                  <v-select
-                    id="tmdbImageDomain"
-                    v-model="tmdbImageDomain"
-                    :options="tmdbImageDomainOptions"
-                    :reduce="(opt: any) => opt.value"
-                    :clearable="false"
-                    class="vue-select-md"
-                    @update:modelValue="handleImageDomainChange"
-                  />
+
+                <!-- 图片域名 -->
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label for="tmdbImageDomain" class="block text-xs text-white/50 mb-1">图片域名</label>
+                    <v-select
+                      id="tmdbImageDomain"
+                      v-model="tmdbImageDomain"
+                      :options="tmdbImageDomainOptions"
+                      :reduce="(opt: any) => opt.value"
+                      :clearable="false"
+                      class="vue-select-md"
+                      @update:modelValue="handleImageDomainChange"
+                    />
+                  </div>
+                  <div v-if="tmdbImageDomain === 'custom'">
+                    <label for="tmdbImageUrl" class="block text-xs text-white/50 mb-1">自定义图片域名</label>
+                    <input id="tmdbImageUrl" v-model="tmdbConfig.imageBaseUrl" type="text" class="input-field" placeholder="https://image.example.com" />
+                  </div>
                 </div>
-                <div v-if="tmdbImageDomain === 'custom'">
-                  <label for="tmdbImageUrl" class="block text-xs text-white/50 mb-1">自定义图片域名</label>
-                  <input id="tmdbImageUrl" v-model="tmdbConfig.imageBaseUrl" type="text" class="input-field" placeholder="https://image.example.com" />
+                <div class="text-xs text-blue-400/80 bg-blue-500/10 p-2 rounded">
+                  当前图片 URL：<code class="text-blue-300">{{ tmdbConfig.imageBaseUrl }}/t/p</code>
                 </div>
               </div>
             </div>
