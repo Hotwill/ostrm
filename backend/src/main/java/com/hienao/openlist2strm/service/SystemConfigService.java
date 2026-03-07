@@ -258,8 +258,9 @@ public class SystemConfigService {
     tmdbConfig.put("proxyHost", ""); // HTTP代理主机地址
     tmdbConfig.put("proxyPort", ""); // HTTP代理端口
     // 中国访问优化配置（可选）
-    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org/3"); // 中国可访问的API域名
-    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org/t/p"); // 中国可访问的图片域名
+    tmdbConfig.put("chinaMode", false); // 是否启用中国访问优化模式
+    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org/3"); // 中国API域名
+    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org/t/p"); // 中国图片域名
     defaultConfig.put("tmdb", tmdbConfig);
 
     // 刮削配置
