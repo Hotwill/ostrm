@@ -279,6 +279,7 @@ jobs:
           CHANGELOG="Release ${VERSION}"
         fi
         gh release create "${VERSION}" \
+          --target main \
           --title "Release ${VERSION}" \
           --notes "${CHANGELOG}" \
           --latest \
