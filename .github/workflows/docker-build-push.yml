@@ -7,12 +7,6 @@ on:
     branches:
       - main
       - beta
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to build'
-        required: true
-        default: 'beta'
 
 env:
   REGISTRY: docker.io
@@ -25,41 +19,37 @@ permissions:
 jobs:
   determine-version:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     outputs:
       should_build: ${{ steps.check_image.outputs.should_build }}
       version: ${{ steps.version_file.outputs.version }}
       is_beta: ${{ steps.version_file.outputs.is_beta }}
     steps:
-    - name: Checkout main branch for app_version.json
+    - name: Checkout source branch for app_version.json
       uses: actions/checkout@v4
       with:
-        ref: main
-        path: main_code
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: source_code
         sparse-checkout: |
           app_version.json
 
-    - name: Read version from main branch
+    - name: Read version from source branch
       id: version_file
       run: |
         # 确定目标分支
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          TARGET_BRANCH="${{ github.event.inputs.branch }}"
-        else
-          TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
-        fi
+        TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
         echo "Target branch: ${TARGET_BRANCH}"
         echo "target_branch=${TARGET_BRANCH}" >> $GITHUB_OUTPUT
 
         if [[ "${TARGET_BRANCH}" == "beta" ]]; then
-          # Beta branch - use beta_version from main branch's app_version.json
-          BETA_VERSION=$(jq -r '.beta_version' main_code/app_version.json)
+          # Beta branch - use beta_version from source app_version.json
+          BETA_VERSION=$(jq -r '.beta_version' source_code/app_version.json)
           echo "Beta branch detected, version: ${BETA_VERSION}"
           echo "version=${BETA_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=true" >> $GITHUB_OUTPUT
         else
-          # Main branch - use release_version from main branch's app_version.json
-          RELEASE_VERSION=$(jq -r '.release_version' main_code/app_version.json)
+          # Main branch - use release_version from source app_version.json
+          RELEASE_VERSION=$(jq -r '.release_version' source_code/app_version.json)
           echo "Main branch detected, version: ${RELEASE_VERSION}"
           echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=false" >> $GITHUB_OUTPUT
