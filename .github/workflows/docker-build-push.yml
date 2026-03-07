@@ -16,7 +16,6 @@ permissions:
   packages: write
 
 jobs:
-  # 确定要构建的版本
   determine-version:
     runs-on: ubuntu-latest
     outputs:
@@ -24,45 +23,45 @@ jobs:
       version: ${{ steps.determine.outputs.version }}
       is_beta: ${{ steps.determine.outputs.is_beta }}
     steps:
-      - name: Determine build version
-        id: determine
-        run: |
-          # 判断是否为 beta 版本构建（通过 tag 触发）
-          if [[ "${{ github.ref }}" refs/tags/beta-v* ]]; then
-            VERSION="${{ github.ref_name }}"
-            IS_BETA="true"
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
-            echo "is_beta=${IS_BETA}" >> $GITHUB_OUTPUT
-            echo "✅ Beta version build: ${VERSION}"
-            exit 0
-          fi
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-          # 正式版本构建（通过 push 到 main 触发）
-          # 获取最新的正式版 tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LATEST_TAG" ]; then
-            echo "❌ No正式版tag found, skip build"
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # 检查镜像是否已存在
-          IMAGE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/ostrm/tags/${LATEST_TAG}")
-          if [ "$IMAGE_EXISTS" = "200" ]; then
-            echo "❌ Image for ${LATEST_TAG} already exists, skip build"
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-            echo "is_beta=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo "✅ New release version found: ${LATEST_TAG}"
+    - name: Determine build version
+      id: determine
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/beta-v* ]]; then
+          VERSION="${{ github.ref_name }}"
+          IS_BETA="true"
           echo "should_build=true" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_beta=${IS_BETA}" >> $GITHUB_OUTPUT
+          echo "Beta version build: ${VERSION}"
+          exit 0
+        fi
+
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -z "$LATEST_TAG" ]; then
+          echo "No formal tag found, skip build"
+          echo "should_build=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        IMAGE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/ostrm/tags/${LATEST_TAG}")
+        if [ "$IMAGE_EXISTS" = "200" ]; then
+          echo "Image for ${LATEST_TAG} already exists, skip build"
+          echo "should_build=false" >> $GITHUB_OUTPUT
           echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
           echo "is_beta=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
 
-  # 并行构建 amd64 架构
+        echo "New release version found: ${LATEST_TAG}"
+        echo "should_build=true" >> $GITHUB_OUTPUT
+        echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+        echo "is_beta=false" >> $GITHUB_OUTPUT
+
   build-amd64:
     runs-on: ubuntu-latest
     permissions:
@@ -87,14 +86,13 @@ jobs:
         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       run: |
         if [ -z "$DOCKERHUB_USERNAME" ]; then
-          echo "❌ Error: DOCKERHUB_USERNAME variable is not configured"
+          echo "DOCKERHUB_USERNAME variable is not configured"
           exit 1
         fi
         if [ -z "$DOCKERHUB_TOKEN" ]; then
-          echo "❌ Error: DOCKERHUB_TOKEN secret is not configured"
+          echo "DOCKERHUB_TOKEN secret is not configured"
           exit 1
         fi
-        echo "✅ Docker Hub credentials are configured"
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -123,7 +121,6 @@ jobs:
           type=gha,mode=max,scope=amd64
           type=registry,ref=docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:buildcache-amd64,mode=max
 
-  # 并行构建 arm64 架构
   build-arm64:
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -148,14 +145,13 @@ jobs:
         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       run: |
         if [ -z "$DOCKERHUB_USERNAME" ]; then
-          echo "❌ Error: DOCKERHUB_USERNAME variable is not configured"
+          echo "DOCKERHUB_USERNAME variable is not configured"
           exit 1
         fi
         if [ -z "$DOCKERHUB_TOKEN" ]; then
-          echo "❌ Error: DOCKERHUB_TOKEN secret is not configured"
+          echo "DOCKERHUB_TOKEN secret is not configured"
           exit 1
         fi
-        echo "✅ Docker Hub credentials are configured"
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
@@ -184,7 +180,6 @@ jobs:
           type=gha,mode=max,scope=arm64
           type=registry,ref=docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:buildcache-arm64,mode=max
 
-  # 创建多架构 manifest
   create-manifest:
     runs-on: ubuntu-latest
     needs: [build-amd64, build-arm64]
@@ -208,7 +203,6 @@ jobs:
     - name: Get version from context
       id: version
       run: |
-        # 从 build-amd64 的 tag 中提取版本
         VERSION="${{ needs.build-amd64.outputs.version }}"
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
@@ -216,17 +210,13 @@ jobs:
       if: needs.build-amd64.outputs.is_beta != 'true'
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        # 创建版本标签的 manifest
         docker buildx imagetools create -t docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION} \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64 \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64
-        
-        # 创建 latest 标签的 manifest
+
         docker buildx imagetools create -t docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:latest \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64 \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64
-        
-        echo "✅ Multi-arch manifest created for ${VERSION} and latest"
 
     - name: Create and push manifest (beta)
       if: needs.build-amd64.outputs.is_beta == 'true'
@@ -235,13 +225,10 @@ jobs:
         docker buildx imagetools create -t docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION} \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64 \
           docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64
-        
-        echo "✅ Multi-arch manifest created for ${VERSION}"
 
     - name: Verify manifests
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        echo "=== Verifying multi-arch manifests ==="
         docker buildx imagetools inspect docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}
 
     - name: Create source code archive
@@ -255,7 +242,6 @@ jobs:
           -x "*.log" \
           -x ".DS_Store" \
           -x "Thumbs.db"
-        ls -lh "ostrm-${VERSION}-source.zip"
 
     - name: Build Changelog
       id: github_release
@@ -270,7 +256,7 @@ jobs:
         fetchReleaseInformation: true
         includeOpen: false
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Create GitHub Release
       if: needs.build-amd64.outputs.is_beta != 'true'
@@ -280,26 +266,21 @@ jobs:
         VERSION="${{ steps.version.outputs.version }}"
         CHANGELOG="${{ steps.github_release.outputs.changelog }}"
         if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "- No changes" ]; then
-          CHANGELOG="## 📝 Changes
-
-This release includes various improvements and bug fixes.
-
-For detailed changes, please check the commit history between tags."
+          CHANGELOG="Release ${VERSION}"
         fi
-
         gh release create "${VERSION}" \
           --title "Release ${VERSION}" \
-          --notes "$CHANGELOG" \
+          --notes "${CHANGELOG}" \
           --latest \
           "ostrm-${VERSION}-source.zip"
 
     - name: Image digest summary
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        echo "## 🐳 Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+        echo "## Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Architecture | Image |" >> $GITHUB_STEP_SUMMARY
         echo "|--------------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| amd64 | \`docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| arm64 | \`docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| Multi-arch | \`docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| amd64 | docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-amd64 |" >> $GITHUB_STEP_SUMMARY
+        echo "| arm64 | docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}-arm64 |" >> $GITHUB_STEP_SUMMARY
+        echo "| Multi-arch | docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION} |" >> $GITHUB_STEP_SUMMARY
