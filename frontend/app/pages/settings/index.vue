@@ -95,6 +95,22 @@
                 </div>
               </div>
             </div>
+
+            <!-- 中国访问优化配置 -->
+            <div class="p-4 bg-white/5 rounded-xl border border-white/6">
+              <h4 class="text-sm font-medium text-white/80 mb-3">中国访问优化</h4>
+              <p class="text-xs text-white/40 mb-4">如果无法直接访问 TMDB API，可配置中国可访问的替代域名（可选）</p>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="tmdbChinaApiUrl" class="block text-xs text-white/50 mb-1">中国 API 域名</label>
+                  <input id="tmdbChinaApiUrl" v-model="tmdbConfig.chinaApiUrl" type="text" class="input-field" placeholder="例如: https://api.tmdb.org/3" />
+                </div>
+                <div>
+                  <label for="tmdbChinaImageUrl" class="block text-xs text-white/50 mb-1">中国图片域名</label>
+                  <input id="tmdbChinaImageUrl" v-model="tmdbConfig.chinaImageUrl" type="text" class="input-field" placeholder="例如: https://image.tmdb.org/t/p" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -310,7 +326,7 @@ const authStore = useAuthStore()
 
 const availableExtensions = ref([])
 const selectedExtensions = ref([])
-const tmdbConfig = ref({ apiKey: '', language: 'zh-CN', region: 'CN', proxyHost: '', proxyPort: '' })
+const tmdbConfig = ref({ apiKey: '', language: 'zh-CN', region: 'CN', proxyHost: '', proxyPort: '', chinaApiUrl: '', chinaImageUrl: '' })
 const scrapingConfig = ref({ enabled: true, keepSubtitleFiles: false, useExistingScrapingInfo: false })
 const aiConfig = ref({ enabled: false, baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-3.5-turbo', qpmLimit: 60, prompt: '' })
 const logConfig = ref({ retentionDays: 7, level: 'info', reportUsageData: true })
