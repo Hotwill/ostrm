@@ -69,7 +69,11 @@ public class TmdbApiService {
   /** 获取API基础URL */
   private String getApiBaseUrl() {
     Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
-    String baseUrl = (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org");
+    String baseUrl = (String) tmdbConfig.get("baseUrl");
+    // 处理空值或空字符串
+    if (baseUrl == null || baseUrl.trim().isEmpty()) {
+      baseUrl = "https://api.themoviedb.org";
+    }
     // 自动拼接版本号
     return baseUrl.replaceAll("/3$", "") + "/3";
   }
@@ -77,8 +81,11 @@ public class TmdbApiService {
   /** 获取图片基础URL */
   private String getImageBaseUrl() {
     Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
-    String imageBaseUrl =
-        (String) tmdbConfig.getOrDefault("imageBaseUrl", "https://image.tmdb.org");
+    String imageBaseUrl = (String) tmdbConfig.get("imageBaseUrl");
+    // 处理空值或空字符串
+    if (imageBaseUrl == null || imageBaseUrl.trim().isEmpty()) {
+      imageBaseUrl = "https://image.tmdb.org";
+    }
     // 自动拼接路径
     return imageBaseUrl.replaceAll("/t/p$", "") + "/t/p";
   }
