@@ -66,36 +66,21 @@ public class TmdbApiService {
     return new RestTemplate(factory);
   }
 
-  /** 获取API基础URL（中国访问优化） */
+  /** 获取API基础URL */
   private String getApiBaseUrl() {
     Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
-    // 检查是否启用中国访问优化模式
-    Boolean chinaMode = (Boolean) tmdbConfig.getOrDefault("chinaMode", false);
-    if (Boolean.TRUE.equals(chinaMode)) {
-      String chinaApiUrl = (String) tmdbConfig.get("chinaApiUrl");
-      if (chinaApiUrl != null && !chinaApiUrl.trim().isEmpty()) {
-        log.info("使用中国专用TMDB API域名: {}", chinaApiUrl);
-        return chinaApiUrl.trim();
-      }
-    }
-    // 使用默认API域名
-    return (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org/3");
+    String baseUrl = (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org");
+    // 自动拼接版本号
+    return baseUrl.replaceAll("/3$", "") + "/3";
   }
 
-  /** 获取图片基础URL（中国访问优化） */
+  /** 获取图片基础URL */
   private String getImageBaseUrl() {
     Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
-    // 检查是否启用中国访问优化模式
-    Boolean chinaMode = (Boolean) tmdbConfig.getOrDefault("chinaMode", false);
-    if (Boolean.TRUE.equals(chinaMode)) {
-      String chinaImageUrl = (String) tmdbConfig.get("chinaImageUrl");
-      if (chinaImageUrl != null && !chinaImageUrl.trim().isEmpty()) {
-        log.info("使用中国专用TMDB图片域名: {}", chinaImageUrl);
-        return chinaImageUrl.trim();
-      }
-    }
-    // 使用默认图片域名
-    return (String) tmdbConfig.getOrDefault("imageBaseUrl", "https://image.tmdb.org/t/p");
+    String imageBaseUrl =
+        (String) tmdbConfig.getOrDefault("imageBaseUrl", "https://image.tmdb.org");
+    // 自动拼接路径
+    return imageBaseUrl.replaceAll("/t/p$", "") + "/t/p";
   }
 
   /** 记录请求详细信息 */

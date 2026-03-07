@@ -96,24 +96,42 @@
               </div>
             </div>
 
-            <!-- 中国访问优化配置 -->
+            <!-- TMDB API 域名配置 -->
             <div class="p-4 bg-white/5 rounded-xl border border-white/6">
-              <div class="flex items-center justify-between mb-3">
-                <h4 class="text-sm font-medium text-white/80">中国访问优化</h4>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input id="tmdbChinaMode" v-model="tmdbConfig.chinaMode" type="checkbox" class="sr-only peer" />
-                  <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                </label>
-              </div>
-              <p class="text-xs text-white/40 mb-4">启用后使用中国可访问的替代域名（可选）</p>
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" :class="{ 'opacity-50 pointer-events-none': !tmdbConfig.chinaMode }">
+              <h4 class="text-sm font-medium text-white/80 mb-3">API 域名配置</h4>
+              <p class="text-xs text-white/40 mb-4">选择 TMDB API 域名，中国用户可选择中国域名</p>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label for="tmdbChinaApiUrl" class="block text-xs text-white/50 mb-1">中国 API 域名</label>
-                  <input id="tmdbChinaApiUrl" v-model="tmdbConfig.chinaApiUrl" type="text" class="input-field" placeholder="例如: https://api.tmdb.org/3" />
+                  <label for="tmdbApiDomain" class="block text-xs text-white/50 mb-1">API 域名</label>
+                  <v-select
+                    id="tmdbApiDomain"
+                    v-model="tmdbApiDomain"
+                    :options="tmdbApiDomainOptions"
+                    :reduce="(opt: any) => opt.value"
+                    :clearable="false"
+                    class="vue-select-md"
+                    @update:modelValue="handleApiDomainChange"
+                  />
+                </div>
+                <div v-if="tmdbApiDomain === 'custom'">
+                  <label for="tmdbApiUrl" class="block text-xs text-white/50 mb-1">自定义 API 域名</label>
+                  <input id="tmdbApiUrl" v-model="tmdbConfig.baseUrl" type="text" class="input-field" placeholder="https://api.example.com" />
                 </div>
                 <div>
-                  <label for="tmdbChinaImageUrl" class="block text-xs text-white/50 mb-1">中国图片域名</label>
-                  <input id="tmdbChinaImageUrl" v-model="tmdbConfig.chinaImageUrl" type="text" class="input-field" placeholder="例如: https://image.tmdb.org/t/p" />
+                  <label for="tmdbImageDomain" class="block text-xs text-white/50 mb-1">图片域名</label>
+                  <v-select
+                    id="tmdbImageDomain"
+                    v-model="tmdbImageDomain"
+                    :options="tmdbImageDomainOptions"
+                    :reduce="(opt: any) => opt.value"
+                    :clearable="false"
+                    class="vue-select-md"
+                    @update:modelValue="handleImageDomainChange"
+                  />
+                </div>
+                <div v-if="tmdbImageDomain === 'custom'">
+                  <label for="tmdbImageUrl" class="block text-xs text-white/50 mb-1">自定义图片域名</label>
+                  <input id="tmdbImageUrl" v-model="tmdbConfig.imageBaseUrl" type="text" class="input-field" placeholder="https://image.example.com" />
                 </div>
               </div>
             </div>
@@ -332,7 +350,7 @@ const authStore = useAuthStore()
 
 const availableExtensions = ref([])
 const selectedExtensions = ref([])
-const tmdbConfig = ref({ apiKey: '', language: 'zh-CN', region: 'CN', proxyHost: '', proxyPort: '', chinaMode: false, chinaApiUrl: 'https://api.tmdb.org/3', chinaImageUrl: 'https://image.tmdb.org/t/p' })
+const tmdbConfig = ref({ apiKey: '', language: 'zh-CN', region: 'CN', proxyHost: '', proxyPort: '', baseUrl: 'https://api.themoviedb.org', imageBaseUrl: 'https://image.tmdb.org' })
 const scrapingConfig = ref({ enabled: true, keepSubtitleFiles: false, useExistingScrapingInfo: false })
 const aiConfig = ref({ enabled: false, baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-3.5-turbo', qpmLimit: 60, prompt: '' })
 const logConfig = ref({ retentionDays: 7, level: 'info', reportUsageData: true })
@@ -343,6 +361,35 @@ const errorMessage = ref('')
 const testingAi = ref(false)
 const aiTestResult = ref(null)
 const resettingPrompt = ref(false)
+
+// TMDB 域名选项
+const tmdbApiDomainOptions = [
+  { label: '官方域名', value: 'https://api.themoviedb.org' },
+  { label: '中国域名', value: 'https://api.tmdb.org' },
+  { label: '自定义', value: 'custom' }
+]
+
+const tmdbImageDomainOptions = [
+  { label: '官方域名', value: 'https://image.tmdb.org' },
+  { label: '自定义', value: 'custom' }
+]
+
+// 当前选中的域名
+const tmdbApiDomain = ref('https://api.themoviedb.org')
+const tmdbImageDomain = ref('https://image.tmdb.org')
+
+// 域名变更处理
+const handleApiDomainChange = (value) => {
+  if (value !== 'custom') {
+    tmdbConfig.value.baseUrl = value
+  }
+}
+
+const handleImageDomainChange = (value) => {
+  if (value !== 'custom') {
+    tmdbConfig.value.imageBaseUrl = value
+  }
+}
 
 // Vue Select 选项数据
 const tmdbLanguageOptions = [
@@ -381,7 +428,17 @@ const loadCurrentSettings = async () => {
       const config = response.data
       if (config.mediaExtensions?.length) selectedExtensions.value = [...config.mediaExtensions]
       else selectedExtensions.value = ['.mp4', '.avi', '.rmvb', '.mkv']
-      if (config.tmdb) tmdbConfig.value = { ...tmdbConfig.value, ...config.tmdb }
+      if (config.tmdb) {
+        tmdbConfig.value = { ...tmdbConfig.value, ...config.tmdb }
+        // 根据配置初始化域名选项
+        const apiDomain = config.tmdb.baseUrl || 'https://api.themoviedb.org'
+        const imageDomain = config.tmdb.imageBaseUrl || 'https://image.tmdb.org'
+        // 检查是否是预设选项
+        const presetApiDomains = tmdbApiDomainOptions.map(o => o.value)
+        const presetImageDomains = tmdbImageDomainOptions.map(o => o.value)
+        tmdbApiDomain.value = presetApiDomains.includes(apiDomain) ? apiDomain : 'custom'
+        tmdbImageDomain.value = presetImageDomains.includes(imageDomain) ? imageDomain : 'custom'
+      }
       if (config.scraping) scrapingConfig.value = { ...scrapingConfig.value, ...config.scraping }
       if (config.ai) aiConfig.value = { ...aiConfig.value, ...config.ai }
       if (config.log) logConfig.value = { ...logConfig.value, ...config.log }

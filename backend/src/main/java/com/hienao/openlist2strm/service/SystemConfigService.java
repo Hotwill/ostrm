@@ -247,8 +247,8 @@ public class SystemConfigService {
     // TMDB API 配置
     Map<String, Object> tmdbConfig = new HashMap<>();
     tmdbConfig.put("apiKey", ""); // TMDB API Key，需要用户配置
-    tmdbConfig.put("baseUrl", "https://api.themoviedb.org/3"); // TMDB API 基础URL
-    tmdbConfig.put("imageBaseUrl", "https://image.tmdb.org/t/p"); // TMDB 图片基础URL
+    tmdbConfig.put("baseUrl", "https://api.themoviedb.org"); // TMDB API 基础URL
+    tmdbConfig.put("imageBaseUrl", "https://image.tmdb.org"); // TMDB 图片基础URL
     tmdbConfig.put("language", "zh-CN"); // 默认语言
     tmdbConfig.put("region", "CN"); // 默认地区
     tmdbConfig.put("timeout", 30); // API 请求超时时间（秒）
@@ -257,10 +257,9 @@ public class SystemConfigService {
     tmdbConfig.put("backdropSize", "w1280"); // 背景图片尺寸
     tmdbConfig.put("proxyHost", ""); // HTTP代理主机地址
     tmdbConfig.put("proxyPort", ""); // HTTP代理端口
-    // 中国访问优化配置（可选）
-    tmdbConfig.put("chinaMode", false); // 是否启用中国访问优化模式
-    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org/3"); // 中国API域名
-    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org/t/p"); // 中国图片域名
+    // 中国访问优化配置
+    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org"); // 中国API域名
+    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org"); // 中国图片域名
     defaultConfig.put("tmdb", tmdbConfig);
 
     // 刮削配置
