@@ -56,20 +56,74 @@ public class GitHubVersionService {
     try {
       log.info("检查版本更新: {}", currentVersion);
 
-      // 获取最新release
-      GitHubRelease latestRelease = getLatestRelease();
-      if (latestRelease == null) {
-        log.warn("无法获取最新版本信息，返回错误响应");
+      // 从 main 分支获取 app_version.json
+      GitHubRelease releaseInfo = getVersionFromAppVersionJson();
+      if (releaseInfo == null) {
+        log.warn("无法从 app_version.json 获取版本信息，返回错误响应");
         return createErrorResponse("无法获取最新版本信息");
       }
 
       // 构建响应
-      VersionCheckResponse response = buildVersionCheckResponse(currentVersion, latestRelease);
+      VersionCheckResponse response = buildVersionCheckResponse(currentVersion, releaseInfo);
 
       return response;
     } catch (Exception e) {
       log.error("检查版本更新失败", e);
       return createErrorResponse("检查版本更新失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 从 main 分支的 app_version.json 获取版本信息
+   *
+   * @return 版本信息
+   */
+  private GitHubRelease getVersionFromAppVersionJson() {
+    try {
+      // 从 main 分支获取 app_version.json
+      String url =
+          String.format(
+              "%s/repos/%s/%s/contents/app_version.json?ref=main",
+              GITHUB_API_URL, repoOwner, repoName);
+
+      HttpHeaders headers = new HttpHeaders();
+      headers.set("Accept", "application/vnd.github.v3+json");
+      headers.set("User-Agent", AppConstants.USER_AGENT);
+
+      HttpEntity<?> entity = new HttpEntity<>(headers);
+      ResponseEntity<String> response =
+          restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+      log.info("获取 app_version.json 响应: {}", response.getBody());
+
+      // 解析 JSON 获取版本
+      com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(response.getBody());
+      String content = root.get("content").asText();
+      String encodedContent = content.replaceAll("\\s", "");
+      String decodedContent = new String(java.util.Base64.getDecoder().decode(encodedContent));
+
+      log.info("app_version.json 内容: {}", decodedContent);
+
+      com.fasterxml.jackson.databind.JsonNode versionInfo = objectMapper.readTree(decodedContent);
+
+      // 构建 release 信息
+      GitHubRelease release = new GitHubRelease();
+      release.setTagName(versionInfo.get("release_version").asText());
+      release.setName("Release " + release.getTagName());
+      release.setBody("Version " + release.getTagName());
+      release.setPrerelease(false);
+      release.setDraft(false);
+      release.setPublishedAt(java.time.LocalDateTime.now());
+
+      log.info(
+          "获取到的版本信息: release={}, beta={}",
+          versionInfo.get("release_version").asText(),
+          versionInfo.get("beta_version").asText());
+
+      return release;
+    } catch (Exception e) {
+      log.error("从 app_version.json 获取版本失败", e);
+      return null;
     }
   }
 
