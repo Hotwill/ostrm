@@ -27,10 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     outputs:
-      should_build: ${{ steps.determine.outputs.should_build }}
-      version: ${{ steps.determine.outputs.version }}
-      is_beta: ${{ steps.determine.outputs.is_beta }}
-      target_branch: ${{ steps.determine.outputs.target_branch }}
+      should_build: ${{ steps.check_image.outputs.should_build }}
+      version: ${{ steps.version_file.outputs.version }}
+      is_beta: ${{ steps.version_file.outputs.is_beta }}
     steps:
     - name: Checkout main branch for app_version.json
       uses: actions/checkout@v4
