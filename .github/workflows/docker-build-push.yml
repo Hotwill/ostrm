@@ -25,29 +25,24 @@ jobs:
       version: ${{ steps.determine.outputs.version }}
       is_beta: ${{ steps.determine.outputs.is_beta }}
     steps:
-    - name: Checkout main branch for app_version.json
+    - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        ref: main
-        path: main_code
-        sparse-checkout: |
-          app_version.json
 
-    - name: Read version from main branch
+    - name: Read app version
       id: version_file
       run: |
         TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
         echo "PR merged to branch: ${TARGET_BRANCH}"
 
         if [[ "${TARGET_BRANCH}" == "beta" ]]; then
-          # Merged to beta branch - use beta_version from main branch's app_version.json
-          BETA_VERSION=$(jq -r '.beta_version' main_code/app_version.json)
+          # Merged to beta branch - use beta_version from app_version.json
+          BETA_VERSION=$(jq -r '.beta_version' app_version.json)
           echo "Beta branch detected, version: ${BETA_VERSION}"
           echo "version=${BETA_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=true" >> $GITHUB_OUTPUT
         else
-          # Merged to main branch - use release_version from main branch's app_version.json
-          RELEASE_VERSION=$(jq -r '.release_version' main_code/app_version.json)
+          # Merged to main branch - use release_version from app_version.json
+          RELEASE_VERSION=$(jq -r '.release_version' app_version.json)
           echo "Main branch detected, version: ${RELEASE_VERSION}"
           echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=false" >> $GITHUB_OUTPUT
@@ -269,7 +264,7 @@ jobs:
       if: needs.build-amd64.outputs.is_beta != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run secrets.GITHUB: |
+      run: |
         VERSION="${{ needs.build-amd64.outputs.version }}"
         CHANGELOG="${{ steps.github_release.outputs.changelog }}"
         if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "- No changes" ]; then
