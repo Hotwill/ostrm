@@ -257,9 +257,9 @@ public class SystemConfigService {
     tmdbConfig.put("backdropSize", "w1280"); // 背景图片尺寸
     tmdbConfig.put("proxyHost", ""); // HTTP代理主机地址
     tmdbConfig.put("proxyPort", ""); // HTTP代理端口
-    // 中国访问优化配置
-    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org"); // 中国API域名
-    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org"); // 中国图片域名
+    // 备用域名配置
+    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org"); // 备用API域名
+    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org"); // 备用图片域名
     defaultConfig.put("tmdb", tmdbConfig);
 
     // 刮削配置

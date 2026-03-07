@@ -99,7 +99,7 @@
             <!-- TMDB API 域名配置 -->
             <div class="p-4 bg-white/5 rounded-xl border border-white/6">
               <h4 class="text-sm font-medium text-white/80 mb-3">API 域名配置</h4>
-              <p class="text-xs text-white/40 mb-4">选择 TMDB API 域名，中国用户可选择中国域名</p>
+              <p class="text-xs text-white/40 mb-4">选择 TMDB API 域名</p>
               <div class="space-y-4">
                 <!-- API 域名 -->
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -377,13 +377,13 @@ const resettingPrompt = ref(false)
 
 // TMDB 域名选项
 const tmdbApiDomainOptions = [
-  { label: '官方域名', value: 'https://api.themoviedb.org' },
-  { label: '中国域名', value: 'https://api.tmdb.org' },
+  { label: '默认域名1', value: 'https://api.themoviedb.org' },
+  { label: '默认域名2', value: 'https://api.tmdb.org' },
   { label: '自定义', value: 'custom' }
 ]
 
 const tmdbImageDomainOptions = [
-  { label: '官方域名', value: 'https://image.tmdb.org' },
+  { label: '默认域名1', value: 'https://image.tmdb.org' },
   { label: '自定义', value: 'custom' }
 ]
 
