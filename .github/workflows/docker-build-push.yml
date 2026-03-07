@@ -1,12 +1,12 @@
 name: Build and Push Docker Image
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
       - beta
-    tags:
-      - 'beta-v*.*.*'
 
 env:
   REGISTRY: docker.io
@@ -19,6 +19,7 @@ permissions:
 jobs:
   determine-version:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     outputs:
       should_build: ${{ steps.determine.outputs.should_build }}
       version: ${{ steps.determine.outputs.version }}
@@ -30,24 +31,21 @@ jobs:
     - name: Read app version
       id: version_file
       run: |
-        if [[ "${{ github.ref }}" == refs/heads/beta ]]; then
-          # Beta branch - use beta_version from app_version.json
+        TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
+        echo "PR merged to branch: ${TARGET_BRANCH}"
+
+        if [[ "${TARGET_BRANCH}" == "beta" ]]; then
+          # Merged to beta branch - use beta_version from app_version.json
           BETA_VERSION=$(jq -r '.beta_version' app_version.json)
           echo "Beta branch detected, version: ${BETA_VERSION}"
           echo "version=${BETA_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=true" >> $GITHUB_OUTPUT
-        elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
-          # Main branch - use release_version from app_version.json
+        else
+          # Merged to main branch - use release_version from app_version.json
           RELEASE_VERSION=$(jq -r '.release_version' app_version.json)
           echo "Main branch detected, version: ${RELEASE_VERSION}"
           echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
           echo "is_beta=false" >> $GITHUB_OUTPUT
-        elif [[ "${{ github.ref }}" == refs/tags/beta-v* ]]; then
-          # Beta tag push
-          VERSION="${{ github.ref_name }}"
-          echo "Beta tag detected: ${VERSION}"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "is_beta=true" >> $GITHUB_OUTPUT
         fi
 
     - name: Check if image exists
