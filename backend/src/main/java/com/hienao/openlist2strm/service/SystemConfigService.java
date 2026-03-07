@@ -72,8 +72,11 @@ public class SystemConfigService {
           // 获取默认配置
           result = getDefaultConfig();
 
-          // 合并现有配置
-          result.putAll(config);
+          // 递归合并配置（修复嵌套 Map 合并问题）
+          deepMerge(result, config);
+
+          // 记录实际读取的配置值
+          logConfigValues(result);
 
           // 检查是否缺少必要字段
           if (!config.containsKey("mediaExtensions")) {
@@ -135,8 +138,11 @@ public class SystemConfigService {
       // 读取现有配置
       Map<String, Object> existingConfig = getSystemConfig();
 
-      // 更新配置
-      existingConfig.putAll(config);
+      // 深度合并配置（递归合并嵌套的 Map）
+      deepMerge(existingConfig, config);
+
+      // 记录关键配置值
+      logConfigurationValues(existingConfig);
 
       // 写入配置文件
       saveSystemConfigInternal(existingConfig);
@@ -145,6 +151,68 @@ public class SystemConfigService {
     } catch (Exception e) {
       log.error("保存系统配置失败", e);
       throw new RuntimeException("保存系统配置失败", e);
+    }
+  }
+
+  /**
+   * 记录关键配置值（用于调试）
+   *
+   * @param config 配置 Map
+   */
+  @SuppressWarnings("unchecked")
+  private void logConfigValues(Map<String, Object> config) {
+    try {
+      Object scrapingObj = config.get("scraping");
+      if (scrapingObj instanceof Map) {
+        Map<String, Object> scraping = (Map<String, Object>) scrapingObj;
+        Boolean keepSubtitle = (Boolean) scraping.get("keepSubtitleFiles");
+        Boolean useExisting = (Boolean) scraping.get("useExistingScrapingInfo");
+        Boolean enabled = (Boolean) scraping.get("enabled");
+        log.info(
+            "读取配置 - 刮削配置: enabled={}, keepSubtitleFiles={}, useExistingScrapingInfo={}",
+            enabled,
+            keepSubtitle,
+            useExisting);
+      }
+    } catch (Exception e) {
+      log.warn("记录配置值失败", e);
+    }
+  }
+
+  /** 记录保存时的配置值 */
+  private void logConfigurationValues(Map<String, Object> config) {
+    logConfigValues(config);
+  }
+
+  /**
+   * 深度合并两个配置 Map 递归合并嵌套的 Map，确保嵌套属性正确更新
+   *
+   * @param target 目标 Map
+   * @param source 源 Map
+   */
+  @SuppressWarnings("unchecked")
+  private void deepMerge(Map<String, Object> target, Map<String, Object> source) {
+    for (Map.Entry<String, Object> entry : source.entrySet()) {
+      String key = entry.getKey();
+      Object value = entry.getValue();
+
+      if (value instanceof Map) {
+        // 如果源值是 Map，递归合并
+        Map<String, Object> targetValue = (Map<String, Object>) target.get(key);
+        if (targetValue == null) {
+          // 如果目标 Map 不存在，直接复制
+          target.put(key, value);
+        } else if (targetValue instanceof Map) {
+          // 目标也是 Map，递归合并
+          deepMerge(targetValue, (Map<String, Object>) value);
+        } else {
+          // 目标不是 Map，直接替换
+          target.put(key, value);
+        }
+      } else {
+        // 非 Map 值直接覆盖
+        target.put(key, value);
+      }
     }
   }
 
@@ -179,8 +247,8 @@ public class SystemConfigService {
     // TMDB API 配置
     Map<String, Object> tmdbConfig = new HashMap<>();
     tmdbConfig.put("apiKey", ""); // TMDB API Key，需要用户配置
-    tmdbConfig.put("baseUrl", "https://api.themoviedb.org/3"); // TMDB API 基础URL
-    tmdbConfig.put("imageBaseUrl", "https://image.tmdb.org/t/p"); // TMDB 图片基础URL
+    tmdbConfig.put("baseUrl", "https://api.themoviedb.org"); // TMDB API 基础URL
+    tmdbConfig.put("imageBaseUrl", "https://image.tmdb.org"); // TMDB 图片基础URL
     tmdbConfig.put("language", "zh-CN"); // 默认语言
     tmdbConfig.put("region", "CN"); // 默认地区
     tmdbConfig.put("timeout", 30); // API 请求超时时间（秒）
@@ -189,18 +257,17 @@ public class SystemConfigService {
     tmdbConfig.put("backdropSize", "w1280"); // 背景图片尺寸
     tmdbConfig.put("proxyHost", ""); // HTTP代理主机地址
     tmdbConfig.put("proxyPort", ""); // HTTP代理端口
+    // 备用域名配置
+    tmdbConfig.put("chinaApiUrl", "https://api.tmdb.org"); // 备用API域名
+    tmdbConfig.put("chinaImageUrl", "https://image.tmdb.org"); // 备用图片域名
     defaultConfig.put("tmdb", tmdbConfig);
 
     // 刮削配置
     Map<String, Object> scrapConfig = new HashMap<>();
     scrapConfig.put("enabled", true); // 是否启用刮削功能
-    scrapConfig.put("generateNfo", true); // 是否生成NFO文件
-    scrapConfig.put("downloadPoster", true); // 是否下载海报
-    scrapConfig.put("downloadBackdrop", false); // 是否下载背景图
     scrapConfig.put("nfoFormat", "kodi"); // NFO格式：kodi, jellyfin, emby
     scrapConfig.put("keepSubtitleFiles", false); // 是否保留字幕文件
     scrapConfig.put("useExistingScrapingInfo", false); // 是否优先使用已存在的刮削信息
-    scrapConfig.put("overwriteExisting", false); // 是否覆盖已存在的NFO和图片文件
     defaultConfig.put("scraping", scrapConfig);
 
     // AI 识别配置
@@ -403,5 +470,16 @@ public class SystemConfigService {
       log.error("创建配置目录失败: {}", getConfigDirectoryPath(), e);
       throw new RuntimeException("创建配置目录失败", e);
     }
+  }
+
+  /**
+   * 获取功能开关配置
+   *
+   * @return 功能开关配置Map
+   */
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> getFeatureFlags() {
+    Map<String, Object> systemConfig = getSystemConfig();
+    return (Map<String, Object>) systemConfig.getOrDefault("featureFlags", new HashMap<>());
   }
 }

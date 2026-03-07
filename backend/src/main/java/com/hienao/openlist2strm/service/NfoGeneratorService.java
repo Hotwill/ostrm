@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -275,17 +274,9 @@ public class NfoGeneratorService {
       Files.createDirectories(parentDir);
     }
 
-    // 检查同名NFO文件是否已存在
+    // 文件存在时直接覆盖（始终覆盖）
     if (Files.exists(path)) {
-      Map<String, Object> scrapingConfig = systemConfigService.getScrapingConfig();
-      boolean overwriteExisting = (Boolean) scrapingConfig.getOrDefault("overwriteExisting", false);
-
-      if (!overwriteExisting) {
-        log.info("检测到同名NFO文件已存在，跳过生成: {}", nfoFilePath);
-        return;
-      } else {
-        log.info("同名NFO文件已存在，但允许覆盖，继续生成: {}", nfoFilePath);
-      }
+      log.debug("NFO文件已存在，覆盖生成: {}", nfoFilePath);
     }
 
     // 写入文件

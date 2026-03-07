@@ -66,6 +66,30 @@ public class TmdbApiService {
     return new RestTemplate(factory);
   }
 
+  /** 获取API基础URL */
+  private String getApiBaseUrl() {
+    Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
+    String baseUrl = (String) tmdbConfig.get("baseUrl");
+    // 处理空值或空字符串
+    if (baseUrl == null || baseUrl.trim().isEmpty()) {
+      baseUrl = "https://api.themoviedb.org";
+    }
+    // 自动拼接版本号
+    return baseUrl.replaceAll("/3$", "") + "/3";
+  }
+
+  /** 获取图片基础URL */
+  private String getImageBaseUrl() {
+    Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
+    String imageBaseUrl = (String) tmdbConfig.get("imageBaseUrl");
+    // 处理空值或空字符串
+    if (imageBaseUrl == null || imageBaseUrl.trim().isEmpty()) {
+      imageBaseUrl = "https://image.tmdb.org";
+    }
+    // 自动拼接路径
+    return imageBaseUrl.replaceAll("/t/p$", "") + "/t/p";
+  }
+
   /** 记录请求详细信息 */
   private void logRequestDetails(String method, String url, Map<String, String> params) {
     log.info("TMDB API 请求 - 方法: {}, URL: {}", method, url);
@@ -126,7 +150,7 @@ public class TmdbApiService {
     String url = null;
 
     try {
-      String baseUrl = (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org/3");
+      String baseUrl = getApiBaseUrl();
       String language = (String) tmdbConfig.getOrDefault("language", "zh-CN");
 
       UriComponentsBuilder builder =
@@ -208,7 +232,7 @@ public class TmdbApiService {
     String url = null;
 
     try {
-      String baseUrl = (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org/3");
+      String baseUrl = getApiBaseUrl();
       String language = (String) tmdbConfig.getOrDefault("language", "zh-CN");
 
       UriComponentsBuilder builder =
@@ -289,7 +313,7 @@ public class TmdbApiService {
     String url = null;
 
     try {
-      String baseUrl = (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org/3");
+      String baseUrl = getApiBaseUrl();
       String language = (String) tmdbConfig.getOrDefault("language", "zh-CN");
 
       url =
@@ -353,7 +377,7 @@ public class TmdbApiService {
     String url = null;
 
     try {
-      String baseUrl = (String) tmdbConfig.getOrDefault("baseUrl", "https://api.themoviedb.org/3");
+      String baseUrl = getApiBaseUrl();
       String language = (String) tmdbConfig.getOrDefault("language", "zh-CN");
 
       url =
@@ -410,9 +434,7 @@ public class TmdbApiService {
       return null;
     }
 
-    Map<String, Object> tmdbConfig = systemConfigService.getTmdbConfig();
-    String imageBaseUrl =
-        (String) tmdbConfig.getOrDefault("imageBaseUrl", "https://image.tmdb.org/t/p");
+    String imageBaseUrl = getImageBaseUrl();
 
     // 确保路径以 / 开头
     if (!imagePath.startsWith("/")) {
@@ -459,7 +481,7 @@ public class TmdbApiService {
 
     try {
       RestTemplate restTemplate = createRestTemplate();
-      String baseUrl = "https://api.themoviedb.org/3";
+      String baseUrl = getApiBaseUrl();
       String url =
           UriComponentsBuilder.fromHttpUrl(baseUrl + "/configuration")
               .queryParam("api_key", apiKey)
