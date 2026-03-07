@@ -121,7 +121,7 @@
                   </div>
                 </div>
                 <div class="text-xs text-blue-400/80 bg-blue-500/10 p-2 rounded">
-                  当前 API URL：<code class="text-blue-300">{{ tmdbConfig.baseUrl }}/3</code>
+                  当前 API URL：<code class="text-blue-300">{{ tmdbConfig.baseUrl.replace('/3', '') }}</code>
                 </div>
 
                 <!-- 图片域名 -->
@@ -144,7 +144,7 @@
                   </div>
                 </div>
                 <div class="text-xs text-blue-400/80 bg-blue-500/10 p-2 rounded">
-                  当前图片 URL：<code class="text-blue-300">{{ tmdbConfig.imageBaseUrl }}/t/p</code>
+                  当前图片 URL：<code class="text-blue-300">{{ tmdbConfig.imageBaseUrl.replace('/t/p', '') }}</code>
                 </div>
               </div>
             </div>
