@@ -6,6 +6,7 @@ import com.hienao.openlist2strm.service.TaskExecutionService;
 import java.time.LocalDateTime;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
+@DisallowConcurrentExecution
 public class TaskConfigJob implements Job {
 
   @Autowired private TaskConfigService taskConfigService;

@@ -21,12 +21,18 @@ package com.hienao.openlist2strm.service;
 import com.hienao.openlist2strm.entity.OpenlistConfig;
 import com.hienao.openlist2strm.entity.TaskConfig;
 import com.hienao.openlist2strm.exception.BusinessException;
+import com.hienao.openlist2strm.handler.FileDiscoveryHandler;
+import com.hienao.openlist2strm.handler.FileFilterHandler;
 import com.hienao.openlist2strm.handler.FileProcessorChain;
+import com.hienao.openlist2strm.handler.FileProcessorHandler;
+import com.hienao.openlist2strm.handler.OrphanCleanupHandler;
+import com.hienao.openlist2strm.handler.SubtitleCopyHandler;
 import com.hienao.openlist2strm.handler.context.FileProcessingContext;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +58,7 @@ public class TaskExecutionService {
   private final MediaScrapingService mediaScrapingService;
   private final SystemConfigService systemConfigService;
   private final FileProcessorChain fileProcessorChain;
+  private final SubtitleCopyHandler subtitleCopyHandler;
   private final Executor taskSubmitExecutor;
 
   /**
@@ -252,9 +259,15 @@ public class TaskExecutionService {
 
     // 6. 获取配置
     Map<String, Object> scrapingConfig = systemConfigService.getScrapingConfig();
-    boolean needScrap = Boolean.TRUE.equals(taskConfig.getNeedScrap());
 
-    // 7. 处理每个视频文件
+    // 7. 清理跨任务遗留状态
+    subtitleCopyHandler.clearDownloadedSubtitles();
+
+    // 8. per-file 链中排除文件发现、文件过滤和孤立清理（已在方法首尾单独处理）
+    Set<Class<? extends FileProcessorHandler>> excludedHandlers =
+        Set.of(FileDiscoveryHandler.class, FileFilterHandler.class, OrphanCleanupHandler.class);
+
+    // 9. 处理每个视频文件
     int processedCount = 0;
     int scrapSkippedCount = 0;
 
@@ -263,8 +276,8 @@ public class TaskExecutionService {
       FileProcessingContext fileContext =
           createFileContext(context, videoFile, openlistConfig, scrapingConfig);
 
-      // 执行处理器链
-      fileProcessorChain.execute(fileContext);
+      // 执行处理器链（排除文件发现、文件过滤和孤立清理）
+      fileProcessorChain.execute(fileContext, excludedHandlers);
 
       // 更新统计
       if (fileContext.getStats().getProcessedFiles() > 0) {
@@ -277,7 +290,7 @@ public class TaskExecutionService {
 
     log.info("Handler 链处理完成: 处理 {} 个视频文件, 跳过 {} 个", processedCount, scrapSkippedCount);
 
-    // 8. 增量模式下清理孤立文件
+    // 10. 增量模式下清理孤立文件
     if (isIncrement) {
       log.info("增量执行模式，开始清理孤立的STRM文件");
       int cleanedCount =

@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
  * <p>负责按顺序执行所有注册的 Handler：
  *
  * <ul>
- *   <li>按 getOrder() 返回值排序
- *   <li>依次调用每个 Handler 的 process() 方法
- *   <li>收集并返回最终处理结果
+ * <li>按 getOrder() 返回值排序
+ * <li>依次调用每个 Handler 的 process() 方法
+ * <li>收集并返回最终处理结果
  * </ul>
  *
  * @author hienao
@@ -52,11 +52,29 @@ public class FileProcessorChain {
    * @return 整体处理结果
    */
   public ProcessingResult execute(FileProcessingContext context) {
+    return execute(context, null);
+  }
+
+  /**
+   * 执行处理链（排除指定处理器）
+   *
+   * @param context 处理上下文
+   * @param excludeHandlerTypes 需要排除的处理器类型
+   * @return 整体处理结果
+   */
+  public ProcessingResult execute(
+      FileProcessingContext context,
+      Set<Class<? extends FileProcessorHandler>> excludeHandlerTypes) {
     ProcessingResult overallResult = ProcessingResult.SUCCESS;
 
     for (FileProcessorHandler handler : handlers) {
       try {
-        // 检查处理器是否支持当前文件类型
+        if (excludeHandlerTypes != null
+            && excludeHandlerTypes.stream().anyMatch(cls -> cls.isInstance(handler))) {
+          log.debug("处理器 {} 被排除，跳过", handler.getClass().getSimpleName());
+          continue;
+        }
+
         if (!supports(handler, context)) {
           log.debug("处理器 {} 不支持当前文件类型，跳过", handler.getClass().getSimpleName());
           continue;

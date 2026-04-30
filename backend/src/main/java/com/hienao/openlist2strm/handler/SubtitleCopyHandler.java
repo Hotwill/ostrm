@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,7 @@ public class SubtitleCopyHandler implements FileProcessorHandler {
   private final OpenlistApiService openlistApiService;
 
   /** 已下载的字幕文件集合（用于防止重复下载） */
-  private final Set<String> downloadedSubtitles = new HashSet<>();
+  private final Set<String> downloadedSubtitles = ConcurrentHashMap.newKeySet();
 
   // ==================== 支持的字幕文件扩展名 ====================
 
