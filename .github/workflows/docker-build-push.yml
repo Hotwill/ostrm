@@ -238,7 +238,7 @@ jobs:
         docker buildx imagetools inspect docker.io/${{ vars.DOCKERHUB_USERNAME }}/ostrm:${VERSION}
 
     - name: Create source code archive
-      if: needs.build-amd64.outputs.is_beta != 'true'
+      if: needs.build-amd64.outputs.is_beta != 'true' && github.event_name == 'push'
       run: |
         VERSION="${{ needs.build-amd64.outputs.version }}"
         zip -r "ostrm-${VERSION}-source.zip" . \
@@ -251,13 +251,14 @@ jobs:
 
     - name: Build Changelog
       id: github_release
-      if: needs.build-amd64.outputs.is_beta != 'true'
+      if: needs.build-amd64.outputs.is_beta != 'true' && github.event_name == 'push'
       uses: mikepenz/release-changelog-builder-action@v4
       with:
         configuration: ".github/release-changelog-config.json"
         ignorePreReleases: true
         fetchViaCommits: true
         commitMode: true
+        failOnError: false
         fetchReviewers: false
         fetchReleaseInformation: true
         includeOpen: false
@@ -265,7 +266,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Create GitHub Release
-      if: needs.build-amd64.outputs.is_beta != 'true'
+      if: needs.build-amd64.outputs.is_beta != 'true' && github.event_name == 'push'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
